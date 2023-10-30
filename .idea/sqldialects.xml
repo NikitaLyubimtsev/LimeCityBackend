@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="SqlDialectMappings">
-    <file url="file://$APPLICATION_CONFIG_DIR$/consoles/db/794d680a-a374-4d8b-8d2e-731c2aa4b2d7/console.sql" dialect="Redis" />
-    <file url="PROJECT" dialect="Redis" />
-  </component>
-</project>

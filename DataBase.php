@@ -25,26 +25,42 @@ class DataBase implements SSEServerDataBaseInterface
     public function getNewEvent(?array $conditions = null): array
     {
         try {
-            $where = " WHERE " . (($conditions) ? implode(" AND ", array_map(static fn($item): string => $item . " = :" . $item ,array_keys($conditions))) : "status = :status");
+            $where = " WHERE " . (($conditions) ? implode(" AND ", array_map(static fn($item): string => $item . " = :" . $item ,array_keys($conditions))) : "delivered_status = :delivered_status");
 
             $query = $this->connection->prepare("SELECT * FROM event" . $where);
 
-            $query->execute($conditions ?? ['status' => 1]);
-            return $query->fetchAll(PDO::FETCH_ASSOC);
+            $query->execute($conditions ?? ['delivered_status' => 0]);
+            $data = $query->fetchAll(PDO::FETCH_ASSOC);
         } catch (Throwable $t) {
-            return ['uuid' => "all", 'title' => "error", 'body' => $t];
+            $data = ['uuid' => "all", 'title' => "error", 'body' => $t];
         }
+        return $data;
     }
 
-    public function updateStatusEvent(int $event_id): void
+    public function updateSendStatusEvent(int $event_id): void
     {
-        $act = $this->connection->prepare("UPDATE message SET status = 0 WHERE id = :id");
-        if (!$act->execute(['id' => $event_id])) {
-            echo "Error " . $act->errorInfo()[2] . "\n\n";
-        }
+        $act = $this->connection->prepare("UPDATE event SET send_status = 1 WHERE id = :id");
+        $act->execute(['id' => $event_id]);
     }
 
+    public function updateDeliveredStatus(int $event_id): void
+    {
+        $act = $this->connection->prepare("UPDATE event SET delivered_status = 1 WHERE id = :id");
+        $act->execute(['id' => $event_id]);
+    }
 
+    /**
+     * Добавление в базу данных нового сообщения
+     *
+     * @param array $data Состав массива с обязательной последовательностью [uuid, title, body]
+     * @return void
+     */
+    public  function addNewEvent(array $data): void
+    {
+        $conn = $this->connection;
+        $act = $conn->prepare("INSERT INTO event (uuid, title, body) VALUES (:uuid, :title, :body)");
+        $act->execute($data);
+    }
 
     public function close(): void
     {

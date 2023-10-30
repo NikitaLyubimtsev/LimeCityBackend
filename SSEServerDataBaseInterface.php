@@ -23,12 +23,22 @@ interface SSEServerDataBaseInterface
     public function getNewEvent(?array $conditions = null): array;
 
     /**
-     * Обновление статуса события
+     * Обновление статуса отправки события
      *
-     * Обновляет статус события после получения на стороне клиента. Необходимо реализовать метод подтверждения о получении события клиентом.
+     * Обновляет статус отправки события после получения на стороне клиента. Необходимо реализовать метод подтверждения о получении события клиентом.
      *
      * @param int $event_id
      * @return void
      */
-   public function updateStatusEvent(int $event_id): void;
+   public function updateSendStatusEvent(int $event_id): void;
+
+    /**
+     * Обновление статуса доставки события
+     *
+     * Обновляет информацию о статусе доставки события
+     *
+     * @param int $event_id
+     * @return void
+     */
+   public function updateDeliveredStatus(int $event_id): void;
 }

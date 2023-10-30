@@ -40,13 +40,17 @@ set_error_handler('handler', E_ALL);
 
 require_once 'SSEServer.php';
 
-$sse = SSEServer::getInstance();
+$SSE = SSEServer::getInstance();
 
 $uuid = $_GET['uuid'] ?? null;
+//$is_delivered = $_GET['is_delivered'] ?? false;
 
 if ($uuid) {
-    $sse->addClient($uuid);
-    $sse->init();
+  //  if ($is_delivered) {
+   //     $SSE->markDeliveredEvent($GET['event_id'] ?? null);
+   // }
+    $SSE->addClient($uuid);
+    $SSE->init();
 }
 
 //$sse->subscribeClient($uuid, $uuid);

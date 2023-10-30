@@ -15,7 +15,6 @@ require_once 'DataBase.php';
  */
 class SSEServer
 {
-
     /** @var array Список подключённых клиентов */
     private static array $clients = array();
     /** @var SSEServer|null Единый экземпляр сервера */
@@ -69,10 +68,10 @@ class SSEServer
      */
     public function addClient(string $clientId): void
     {
-        if ((!isset(self::$events[$clientId])) || (!self::$clients[$clientId]['connection'])) {
+        if (!isset(self::$events[$clientId])) {
             self::$clients[$clientId] = ['connection' => true, 'subscriptions' => array()];
             $data = [
-                'id' => 0,
+                'id' => 1,
                 "title" => "Connection",
                 'body' => "Success connect client UUID: $clientId",
             ];
@@ -92,10 +91,9 @@ class SSEServer
      */
     public function addEvent(string $uuid, array $data): void
     {
-        if ((!isset(self::$clients[$uuid])) || (!self::$clients[$uuid]['connection'])) {
-            throw new RuntimeException("Пользователь для которого отправлено событие не обнаружен");
+        if (isset(self::$clients[$uuid]) || $uuid === 'all') {
+            self::$events[$uuid][] = $data;
         }
-        self::$events[$uuid] = $data;
     }
 
     /**
@@ -144,23 +142,23 @@ class SSEServer
                 exit();
             }
 
+
             try {
+                $newEventSend = random_int(0, 150);
+                if (!$newEventSend) {
+                    $this->test();
+                }
+
                 $this->checkAndAddEvents();
 
                 $this->sendEventToClient();
+
+
             } catch (Throwable $t) {
-                $this->sendEvent(['title' => 'error', 'body' => $t->getMessage()], "error");
+                $this->sendEvent(['title' => 'error to init', 'body' => $t], "runtimeError");
             }
 
-//         //   $this->addEvent('UUID test', ['title' => "New test", 'body' => "test body"]);
-//          //  echo "data: " . json_encode(self::$events) . "\n\n";
-//
-//            $n = rand(1,10000);
-//            echo "data: Connection $n. " . json_encode(self::$clients) . "\n\n";
-//            ob_flush();
-//            flush();
-
-            sleep(10);
+            sleep(20);
         }
     }
 
@@ -173,10 +171,10 @@ class SSEServer
      */
     private function sendEventToClient(): void
     {
-       // $this->sendEvent(self::$events);
+        //$this->sendEvent(self::$events);
         foreach (self::$clients as $uuid => $clientInfo) {
             $client_events = array_values(array_filter(self::$events, static fn($item) => ($item === $uuid) || ($item === "all"), ARRAY_FILTER_USE_KEY));
-
+          //  $this->sendEvent($client_events);
             if (count($client_events) > 1) {
                 foreach ($client_events as $data) {
                     $this->sendEvent($data);
@@ -198,17 +196,17 @@ class SSEServer
      * @return void
      * TODO продумать пакетную отправку данных когда для пользователя более чем одно событие
      */
-    private function sendEvent(array $data): void
+    private function sendEvent(array $data, string $eventType = "message"): void
     {
-        $eventType = "message";
         $cur_event_id = $data['id'] ?? $this->event_id;
 
         try {
             $this->event_id++;
             $send_data = json_encode($data, JSON_THROW_ON_ERROR);
         } catch (Throwable $t) {
-            $send_data = $t->getMessage();
-            $eventType = "error";
+            echo "id: $this->event_id\n";
+            echo "event: error\n";
+            echo "data: " . $t->getMessage() . "\n\n";
         }
 
         echo "id: $cur_event_id\n";
@@ -229,17 +227,43 @@ class SSEServer
     private function checkAndAddEvents(): void
     {
         $conn = new DataBase();
-       // while (true) {
         $messages = $conn->getNewEvent();
 
         if (count($messages) > 0) {
             foreach ($messages as $message) {
-                $this->addEvent($message['uuid'], $messages);
+                $this->addEvent($message['uuid'], $message);
+                $conn->updateSendStatusEvent($message['id']);
             }
         }
 
         $conn->close();
-     //   sleep(5);
+
+    }
+
+    /**
+     * Отметка о доставке события
+     *
+     * Устанавливает отметку в базе данных о доставке события клиенту
+     *
+     * @param int|null $event_id Идентификатор записи в базе данных
+     * @return void
+     */
+    public function markDeliveredEvent(?int $event_id): void
+    {
+        if ($event_id) {
+            $conn = new DataBase();
+            $conn->updateDeliveredStatus($event_id);
         }
- //   }
+    }
+
+    private function test(): void
+    {
+        $messageId = uniqid('', true);
+        $uuid = "2345";
+        $conn = new DataBase();
+        $conn->addNewEvent(["uuid" => $uuid, "title" => "Тестовое сообщение", "body" => "Тестовое сообщение номер: $messageId отправлено через 10 seconds"]);
+        $conn->close();
+        //$randomInterval = random_int(3, 15); // 900, 5400
+    }
+
 }
